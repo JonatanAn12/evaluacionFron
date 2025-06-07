@@ -1,7 +1,9 @@
 <template>
   <v-container>
     <v-card>
-      <v-card-title>Especialistas</v-card-title>
+      <v-card-title>
+        <span class="text-h6">Especialistas</span>
+      </v-card-title>
       <v-card-text>
         <v-form @submit.prevent="guardarFormulario">
           <v-row>
@@ -49,6 +51,7 @@
         :items="especialistas"
         :items-per-page="5"
         class="elevation-1"
+        :loading="loading"
       >
         <template #item.acciones="{ item }">
           <v-btn icon color="primary" @click="editarEspecialista(item)">
@@ -59,6 +62,12 @@
           </v-btn>
         </template>
       </v-data-table>
+      <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000" top right>
+        {{ snackbar.message }}
+        <template #action="{ attrs }">
+          <v-btn color="white" text v-bind="attrs" @click="snackbar.show = false">Cerrar</v-btn>
+        </template>
+      </v-snackbar>
     </v-card>
   </v-container>
 </template>
@@ -108,12 +117,28 @@ const form = ref<Especialista>({
 
 const editando = ref(false)
 const editId = ref<number | null>(null)
+const loading = ref(false)
+
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: '',
+})
+
+const mostrarAlerta = (mensaje: string, color: string = 'error') => {
+  snackbar.value.message = mensaje
+  snackbar.value.color = color
+  snackbar.value.show = true
+}
 
 const cargarEspecialistas = async () => {
+  loading.value = true
   try {
     especialistas.value = await obtenerEspecialistas()
   } catch (error) {
-    console.error('Error cargando especialistas:', error)
+    mostrarAlerta('Error cargando especialistas.', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -135,18 +160,6 @@ const prepararDatosParaEnvio = (datos: Especialista) => {
       : null,
     activo: datos.activo === true,
   }
-}
-
-const snackbar = ref({
-  show: false,
-  message: '',
-  color: '',
-})
-
-const mostrarAlerta = (mensaje: string, color: string = 'error') => {
-  snackbar.value.message = mensaje
-  snackbar.value.color = color
-  snackbar.value.show = true
 }
 
 const guardarFormulario = async () => {
@@ -186,7 +199,6 @@ const guardarFormulario = async () => {
     resetForm()
     await cargarEspecialistas()
   } catch (error) {
-    console.error('Error al guardar especialista:', error)
     mostrarAlerta('Ocurrió un error al guardar el especialista.', 'error')
   }
 }
@@ -217,7 +229,7 @@ const resetForm = () => {
 
 const eliminarEspecialista = async (id?: number) => {
   if (!id) {
-    alert('ID inválido para eliminar especialista.')
+    mostrarAlerta('ID inválido para eliminar especialista.', 'error')
     return
   }
   if (!confirm('¿Estás seguro de eliminar este especialista? Esta acción no se puede deshacer.')) {
@@ -225,11 +237,10 @@ const eliminarEspecialista = async (id?: number) => {
   }
   try {
     await eliminarFormulario(id)
-    alert('Especialista eliminado correctamente.')
+    mostrarAlerta('Especialista eliminado correctamente.', 'success')
     await cargarEspecialistas()
   } catch (error) {
-    console.error('Error al eliminar especialista:', error)
-    alert('Ocurrió un error al eliminar el especialista.')
+    mostrarAlerta('Ocurrió un error al eliminar el especialista.', 'error')
   }
 }
 
