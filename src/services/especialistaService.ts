@@ -14,7 +14,16 @@ export async function obtenerEspecialistas() {
 
 export async function enviarFormularioEspecialistas(datos: any) {
   try {
-    const response = await axios.post(API_URL, datos)
+    // Formatear fechas y horas a strings ISO o formato esperado
+    const datosFormateados = {
+      ...datos,
+      fechaDisponibilidad: datos.fechaDisponibilidad
+        ? new Date(datos.fechaDisponibilidad).toISOString().split('T')[0]
+        : null,
+      horaInicio: datos.horaInicio ? datos.horaInicio + ':00' : null,
+      horaFin: datos.horaFin ? datos.horaFin + ':00' : null,
+    }
+    const response = await axios.post(API_URL, datosFormateados)
     return response.data
   } catch (error) {
     console.error('Error al enviar el formulario:', error)
