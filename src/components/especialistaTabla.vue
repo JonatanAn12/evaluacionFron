@@ -19,7 +19,18 @@
               />
             </v-col>
             <v-col cols="12" sm="6" md="4">
-              <v-text-field v-model="form.disponibilidad" label="disponibilidad" required />
+              <v-text-field
+                v-model="form.fechaDisponibilidad"
+                label="Fecha Disponibilidad"
+                type="date"
+                required
+              />
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <v-text-field v-model="form.horaInicio" label="Hora Inicio" type="time" required />
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <v-text-field v-model="form.horaFin" label="Hora Fin" type="time" required />
             </v-col>
             <v-col cols="12" sm="6" md="4">
               <v-text-field v-model="form.activo" label="Estado" required />
@@ -52,7 +63,7 @@
         height="600px"
         style="width: 80vw; margin: 0 auto"
       >
-        <template v-slot:item.acciones="{ item }">
+        <template #item.acciones="{ item }">
           <v-btn icon color="primary" @click="editarFormulario(item)">
             <v-icon>mdi-pencil</v-icon>
           </v-btn>
@@ -97,7 +108,9 @@ interface Formulario {
   nombre: string
   especialidad: string
   registroProfesional: string
-  disponibilidad: string
+  fechaDisponibilidad: string
+  horaInicio: string
+  horaFin: string
   activo?: boolean
 }
 
@@ -112,7 +125,9 @@ const headers: Header[] = [
   { text: 'Nombre', value: 'nombre' },
   { text: 'Especialidad', value: 'especialidad' },
   { text: 'Registro Profesional', value: 'registroProfesional' },
-  { text: 'Disponibilidad', value: 'disponibilidad' },
+  { text: 'Fecha Disponibilidad', value: 'fechaDisponibilidad' },
+  { text: 'Hora Inicio', value: 'horaInicio' },
+  { text: 'Hora Fin', value: 'horaFin' },
   { text: 'Activo', value: 'activo' },
   { text: 'Acciones', value: 'acciones', sortable: false },
 ]
@@ -122,7 +137,9 @@ const form = ref<Formulario>({
   nombre: '',
   especialidad: '',
   registroProfesional: '',
-  disponibilidad: '',
+  fechaDisponibilidad: '',
+  horaInicio: '',
+  horaFin: '',
   activo: true,
 })
 const editando = ref(false)
@@ -144,7 +161,9 @@ const guardarFormulario = async () => {
     nombre: '',
     especialidad: '',
     registroProfesional: '',
-    disponibilidad: '',
+    fechaDisponibilidad: '',
+    horaInicio: '',
+    horaFin: '',
     activo: true,
   }
   editando.value = false
@@ -163,7 +182,9 @@ const cancelarEdicion = () => {
     nombre: '',
     especialidad: '',
     registroProfesional: '',
-    disponibilidad: '',
+    fechaDisponibilidad: '',
+    horaInicio: '',
+    horaFin: '',
     activo: true,
   }
   editando.value = false
