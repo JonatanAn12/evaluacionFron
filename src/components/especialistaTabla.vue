@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-card>
-      <v-card-title>Formularios</v-card-title>
+      <v-card-title>Especialistas</v-card-title>
       <v-card-text>
         <v-form @submit.prevent="guardarFormulario">
           <v-row>
@@ -33,41 +33,28 @@
               <v-text-field v-model="form.horaFin" label="Hora Fin" type="time" required />
             </v-col>
             <v-col cols="12" sm="6" md="4">
-              <v-text-field v-model="form.activo" label="Estado" required />
+              <v-checkbox v-model="form.activo" label="Activo" />
             </v-col>
             <v-col cols="12" sm="6" md="4">
-              <v-btn color="primary" type="submit">
-                {{ editando ? 'Actualizar' : 'Agregar' }}
-              </v-btn>
-              <v-btn v-if="editando" color="grey" @click="cancelarEdicion" class="ml-2">
-                Cancelar
-              </v-btn>
+              <v-btn color="primary" type="submit">{{ editando ? 'Actualizar' : 'Agregar' }}</v-btn>
+              <v-btn v-if="editando" color="grey" @click="cancelarEdicion" class="ml-2"
+                >Cancelar</v-btn
+              >
             </v-col>
-            <v-text-field
-              v-model="especialidadFiltro"
-              label="Filtrar por especialidad"
-              append-icon="mdi-filter"
-              @input="filtrarPorEspecialidad"
-              clearable
-              class="mb-4"
-              style="max-width: 500px; margin: 0 auto"
-            />
           </v-row>
         </v-form>
       </v-card-text>
       <v-data-table
         :headers="headers"
-        :items="formularios"
+        :items="especialistas"
         :items-per-page="5"
         class="elevation-1"
-        height="600px"
-        style="width: 80vw; margin: 0 auto"
       >
         <template #item.acciones="{ item }">
-          <v-btn icon color="primary" @click="editarFormulario(item)">
+          <v-btn icon color="primary" @click="editarEspecialista(item)">
             <v-icon>mdi-pencil</v-icon>
           </v-btn>
-          <v-btn icon color="red" @click="eliminar(item.id)">
+          <v-btn icon color="red" @click="eliminarEspecialista(item.id)">
             <v-icon>mdi-delete</v-icon>
           </v-btn>
         </template>
@@ -82,28 +69,10 @@ import {
   obtenerEspecialistas,
   enviarFormularioEspecialistas,
   actualizarFormulario,
-  obtenerEspecialistasInactivos,
-  restaurarEspecialista,
-  eliminarEspecialistaPermanentemente,
-  obtenerEspecialistasOrdenadosPorNombre,
-  obtenerEspecialistasOrdenadosPorEspecialidad,
-  obtenerEspecialistasPorEspecialidad,
-  buscarEspecialistasPorNombre,
   eliminarFormulario,
-} from '@/services/especialistaService'
+} from '../services/especialistaService'
 
-const especialidadFiltro = ref('')
-
-const filtrarPorEspecialidad = async () => {
-  if (especialidadFiltro.value.trim() === '') {
-    await cargarFormularios()
-  } else {
-    const resultados = await cargarPorEspecialidad(especialidadFiltro.value)
-    formularios.value = resultados || []
-  }
-}
-
-interface Formulario {
+interface Especialista {
   id?: number
   nombre: string
   especialidad: string
@@ -111,16 +80,10 @@ interface Formulario {
   fechaDisponibilidad: string
   horaInicio: string
   horaFin: string
-  activo?: boolean
+  activo: boolean
 }
 
-interface Header {
-  text: string
-  value: string
-  sortable?: boolean
-}
-
-const headers: Header[] = [
+const headers = [
   { text: 'ID', value: 'id' },
   { text: 'Nombre', value: 'nombre' },
   { text: 'Especialidad', value: 'especialidad' },
@@ -132,8 +95,8 @@ const headers: Header[] = [
   { text: 'Acciones', value: 'acciones', sortable: false },
 ]
 
-const formularios = ref<Formulario[]>([])
-const form = ref<Formulario>({
+const especialistas = ref<Especialista[]>([])
+const form = ref<Especialista>({
   nombre: '',
   especialidad: '',
   registroProfesional: '',
@@ -142,42 +105,105 @@ const form = ref<Formulario>({
   horaFin: '',
   activo: true,
 })
+
 const editando = ref(false)
 const editId = ref<number | null>(null)
 
-const cargarFormularios = async () => {
-  formularios.value = await obtenerEspecialistas()
+const cargarEspecialistas = async () => {
+  try {
+    especialistas.value = await obtenerEspecialistas()
+  } catch (error) {
+    console.error('Error cargando especialistas:', error)
+  }
 }
 
-onMounted(cargarFormularios)
+const prepararDatosParaEnvio = (datos: Especialista) => {
+  return {
+    ...datos,
+    fechaDisponibilidad: datos.fechaDisponibilidad
+      ? new Date(datos.fechaDisponibilidad).toISOString().split('T')[0]
+      : null,
+    horaInicio: datos.horaInicio
+      ? datos.horaInicio.length === 5
+        ? datos.horaInicio + ':00'
+        : datos.horaInicio
+      : null,
+    horaFin: datos.horaFin
+      ? datos.horaFin.length === 5
+        ? datos.horaFin + ':00'
+        : datos.horaFin
+      : null,
+    activo: datos.activo === true,
+  }
+}
+
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: '',
+})
+
+const mostrarAlerta = (mensaje: string, color: string = 'error') => {
+  snackbar.value.message = mensaje
+  snackbar.value.color = color
+  snackbar.value.show = true
+}
 
 const guardarFormulario = async () => {
-  if (editando.value && editId.value !== null) {
-    await actualizarFormulario(editId.value, form.value)
-  } else {
-    await enviarFormularioEspecialistas(form.value)
+  // Validaciones básicas
+  if (!form.value.nombre.trim()) {
+    mostrarAlerta('El campo Nombre es obligatorio.', 'error')
+    return
   }
-  form.value = {
-    nombre: '',
-    especialidad: '',
-    registroProfesional: '',
-    fechaDisponibilidad: '',
-    horaInicio: '',
-    horaFin: '',
-    activo: true,
+  if (!form.value.especialidad.trim()) {
+    mostrarAlerta('El campo Especialidad es obligatorio.', 'error')
+    return
   }
-  editando.value = false
-  editId.value = null
-  cargarFormularios()
+  if (!form.value.registroProfesional.trim()) {
+    mostrarAlerta('El campo Registro Profesional es obligatorio.', 'error')
+    return
+  }
+  if (!form.value.fechaDisponibilidad) {
+    mostrarAlerta('El campo Fecha Disponibilidad es obligatorio.', 'error')
+    return
+  }
+  if (!form.value.horaInicio) {
+    mostrarAlerta('El campo Hora Inicio es obligatorio.', 'error')
+    return
+  }
+  if (!form.value.horaFin) {
+    mostrarAlerta('El campo Hora Fin es obligatorio.', 'error')
+    return
+  }
+  try {
+    if (editando.value && editId.value !== null) {
+      await actualizarFormulario(editId.value, prepararDatosParaEnvio(form.value))
+      mostrarAlerta('Especialista actualizado correctamente.', 'success')
+    } else {
+      await enviarFormularioEspecialistas(prepararDatosParaEnvio(form.value))
+      mostrarAlerta('Especialista creado correctamente.', 'success')
+    }
+    resetForm()
+    await cargarEspecialistas()
+  } catch (error) {
+    console.error('Error al guardar especialista:', error)
+    mostrarAlerta('Ocurrió un error al guardar el especialista.', 'error')
+  }
 }
 
-const editarFormulario = (item: Formulario) => {
+const editarEspecialista = (item: Especialista) => {
   form.value = { ...item }
   editando.value = true
   editId.value = item.id ?? null
 }
 
 const cancelarEdicion = () => {
+  resetForm()
+  editando.value = false
+  editId.value = null
+}
+
+const resetForm = () => {
   form.value = {
     nombre: '',
     especialidad: '',
@@ -187,43 +213,27 @@ const cancelarEdicion = () => {
     horaFin: '',
     activo: true,
   }
-  editando.value = false
-  editId.value = null
 }
 
-const eliminar = async (id?: number) => {
-  if (!id) return
-  await eliminarFormulario(id)
-  cargarFormularios()
+const eliminarEspecialista = async (id?: number) => {
+  if (!id) {
+    alert('ID inválido para eliminar especialista.')
+    return
+  }
+  if (!confirm('¿Estás seguro de eliminar este especialista? Esta acción no se puede deshacer.')) {
+    return
+  }
+  try {
+    await eliminarFormulario(id)
+    alert('Especialista eliminado correctamente.')
+    await cargarEspecialistas()
+  } catch (error) {
+    console.error('Error al eliminar especialista:', error)
+    alert('Ocurrió un error al eliminar el especialista.')
+  }
 }
 
-const cargarEspecialistasInactivos = async () => {
-  formularios.value = await obtenerEspecialistasInactivos()
-}
-
-const restaurar = async (id: number) => {
-  await restaurarEspecialista(id)
-  cargarFormularios()
-}
-
-const eliminarPermanentemente = async (id: number) => {
-  await eliminarEspecialistaPermanentemente(id)
-  cargarFormularios()
-}
-
-const cargarOrdenadosPorNombre = async () => {
-  formularios.value = await obtenerEspecialistasOrdenadosPorNombre()
-}
-
-const cargarOrdenadosPorEspecialidad = async () => {
-  formularios.value = await obtenerEspecialistasOrdenadosPorEspecialidad()
-}
-
-const cargarPorEspecialidad = async (especialidad: string) => {
-  return await obtenerEspecialistasPorEspecialidad(especialidad)
-}
-
-const buscarPorNombre = async (nombre: string) => {
-  formularios.value = await buscarEspecialistasPorNombre(nombre)
-}
+onMounted(() => {
+  cargarEspecialistas()
+})
 </script>

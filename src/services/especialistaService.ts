@@ -20,17 +20,25 @@ export async function enviarFormularioEspecialistas(datos: any) {
       fechaDisponibilidad: datos.fechaDisponibilidad
         ? new Date(datos.fechaDisponibilidad).toISOString().split('T')[0]
         : null,
-      horaInicio: datos.horaInicio ? datos.horaInicio + ':00' : null,
-      horaFin: datos.horaFin ? datos.horaFin + ':00' : null,
+      horaInicio: datos.horaInicio
+        ? datos.horaInicio.length === 5
+          ? datos.horaInicio + ':00'
+          : datos.horaInicio
+        : null,
+      horaFin: datos.horaFin
+        ? datos.horaFin.length === 5
+          ? datos.horaFin + ':00'
+          : datos.horaFin
+        : null,
+      activo: datos.activo === true || datos.activo === 'true',
     }
     const response = await axios.post(API_URL, datosFormateados)
     return response.data
-  } catch (error) {
-    console.error('Error al enviar el formulario:', error)
+  } catch (error: any) {
+    console.error('Error al enviar el formulario:', error.response?.data || error.message)
     throw error
   }
 }
-
 export async function actualizarFormulario(id: Number, datos: any) {
   try {
     const response = await axios.put(`${API_URL}/${id}`, datos)
